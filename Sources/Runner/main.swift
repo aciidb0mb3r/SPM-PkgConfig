@@ -1,10 +1,11 @@
 @testable import PkgConfig
 import Utility
+import POSIX 
 
-var count = 0
-
-func scanDir(dir: String) throws {
+func scanDir(dir: String) throws -> Int {
     precondition(dir.isDirectory)
+    var count = 0
+    print("Scanning folder: \(dir)")
     try walk(dir, recursively: false).forEach { pcFile in
         var parser = PkgConfigParser(pcFile: pcFile)
         try parser.parse()
@@ -15,13 +16,15 @@ func scanDir(dir: String) throws {
             print(flags)
         }
     }
+    return count
 }
 
 do {
-    let paths = ["/usr/local/lib/pkgconfig", "/usr/local/share/pkgconfig",
-                "/usr/lib/pkgconfig", "/usr/local/Library/ENV/pkgconfig/10.11"]
+    let searchPaths = try? POSIX.popen(["pkg-config", "--variable", "pc_path", "pkg-config"])
+    let paths = searchPaths?.characters.split(separator: ":").map(String.init) ?? []
+    var count = 0
     for path in paths where path.isDirectory {
-        try scanDir(dir: path)
+        count += try scanDir(dir: path)
     }
     print("Files scanned: \(count)")
 } catch {
